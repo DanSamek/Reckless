@@ -217,12 +217,12 @@ impl Default for ContinuationHistory {
     }
 }
 
-pub struct CutoffHistory {
+pub struct CutNodeCorrectionHistory {
     // [side_to_move][key]
     entries: Box<[[i16; Self::SIZE]; 2]>,
 }
 
-impl CutoffHistory {
+impl CutNodeCorrectionHistory {
     const MAX_HISTORY: i32 = 8192;
 
     const SIZE : usize = 32768;
@@ -238,7 +238,7 @@ impl CutoffHistory {
     }
 }
 
-impl Default for CutoffHistory {
+impl Default for CutNodeCorrectionHistory {
     fn default() -> Self {
         Self { entries: zeroed_box() }
     }
