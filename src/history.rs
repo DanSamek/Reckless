@@ -217,12 +217,12 @@ impl Default for ContinuationHistory {
     }
 }
 
-pub struct NullMoveHistory {
+pub struct CutoffHistory {
     // [side_to_move][key]
     entries: Box<[[i16; Self::SIZE]; 2]>,
 }
 
-impl NullMoveHistory {
+impl CutoffHistory {
     const MAX_HISTORY: i32 = 8192;
 
     const SIZE : usize = 32768;
@@ -238,7 +238,7 @@ impl NullMoveHistory {
     }
 }
 
-impl Default for NullMoveHistory {
+impl Default for CutoffHistory {
     fn default() -> Self {
         Self { entries: zeroed_box() }
     }

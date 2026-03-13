@@ -508,6 +508,7 @@ fn search<NODE: NodeType>(
         return qsearch::<NonPV>(td, alpha, beta, ply);
     }
 
+    let cutoff_history_value = td.cutoff_history.get(td.board.pawn_key(), td.board.side_to_move()) as i32;
     // Reverse Futility Pruning (RFP)
     if !tt_pv
         && !excluded
@@ -518,13 +519,13 @@ fn search<NODE: NodeType>(
                 + 519 * correction_value.abs() / 1024
                 + 32 * (depth == 1) as i32
                 - 64 * ((td.board.all_threats() & td.board.us()).is_empty() && !td.board.in_check()) as i32
+                - cutoff_history_value / 128
         && !is_loss(beta)
         && !is_win(estimated_score)
     {
         return beta + (estimated_score - beta) / 3;
     }
 
-    let nmp_history_value = td.null_move_history.get(td.board.pawn_key(), td.board.side_to_move()) as i32;
     // Null Move Pruning (NMP)
     if cut_node
         && !in_check
@@ -534,7 +535,7 @@ fn search<NODE: NodeType>(
         && estimated_score >= eval
         && eval
             >= beta - 9 * depth + 126 * tt_pv as i32 - 128 * improvement / 1024 + 286
-                - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32 - nmp_history_value / 128
+                - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32
         && ply as i32 >= td.nmp_min_ply
         && td.board.has_non_pawns()
         && !is_loss(beta)
@@ -562,9 +563,6 @@ fn search<NODE: NodeType>(
         if td.stopped {
             return Score::ZERO;
         }
-
-        let bonus = if score >= beta { 800 } else { -800 };
-        td.null_move_history.update(td.board.pawn_key(), td.board.side_to_move(), bonus);
 
         if score >= beta && !is_win(score) {
             if td.nmp_min_ply > 0 || depth < 16 {
@@ -1078,6 +1076,11 @@ fn search<NODE: NodeType>(
     #[cfg(feature = "syzygy")]
     if NODE::PV {
         best_score = best_score.min(max_score);
+    }
+
+    if !NODE::PV {
+        let bonus = if best_score >= beta { 800 } else { -800 };
+        td.cutoff_history.update(td.board.pawn_key(), td.board.side_to_move(), bonus);
     }
 
     if !(excluded || NODE::ROOT && td.pv_index > 0) {
