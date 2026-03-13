@@ -524,7 +524,7 @@ fn search<NODE: NodeType>(
         return beta + (estimated_score - beta) / 3;
     }
 
-    let cutnode_correction_value = td.corrhist().cut_node.get(td.board.side_to_move(), td.board.pawn_key()) / 128;
+    let cutnode_correction_value = td.corrhist().cut_node.get(td.board.side_to_move(), td.board.pawn_key()) / 256;
     // Null Move Pruning (NMP)
     if cut_node
         && !in_check
