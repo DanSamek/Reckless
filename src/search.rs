@@ -397,7 +397,7 @@ fn search<NODE: NodeType>(
         }
     }
 
-    let correction_value = eval_correction(td, ply);
+    let correction_value = eval_correction(td, ply, cut_node);
 
     let raw_eval;
     let mut eval;
@@ -524,12 +524,6 @@ fn search<NODE: NodeType>(
         return beta + (estimated_score - beta) / 3;
     }
 
-    let cutnode_correction_history = if cut_node {
-        td.cutnode_correction_history.get(td.board.pawn_key(), td.board.side_to_move()) as i32
-    } else {
-        0
-    };
-
     // Null Move Pruning (NMP)
     if cut_node
         && !in_check
@@ -540,7 +534,6 @@ fn search<NODE: NodeType>(
         && eval
             >= beta - 9 * depth + 126 * tt_pv as i32 - 128 * improvement / 1024 + 286
                 - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32
-                - 20 * (cutnode_correction_history > 8000) as i32
         && ply as i32 >= td.nmp_min_ply
         && td.board.has_non_pawns()
         && !is_loss(beta)
@@ -1083,11 +1076,6 @@ fn search<NODE: NodeType>(
         best_score = best_score.min(max_score);
     }
 
-    if cut_node {
-        let bonus = ((best_score - beta) * depth * 6).clamp(-800, 800);
-        td.cutnode_correction_history.update(td.board.pawn_key(), td.board.side_to_move(), bonus);
-    }
-
     if !(excluded || NODE::ROOT && td.pv_index > 0) {
         td.shared.tt.write(hash, depth, raw_eval, best_score, bound, best_move, ply, tt_pv, NODE::PV);
     }
@@ -1097,7 +1085,7 @@ fn search<NODE: NodeType>(
         || (bound == Bound::Upper && best_score >= eval)
         || (bound == Bound::Lower && best_score <= eval))
     {
-        update_correction_histories(td, depth, best_score - eval, ply);
+        update_correction_histories(td, depth, best_score - eval, ply, cut_node);
     }
 
     debug_assert!(alpha < beta);
@@ -1179,7 +1167,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
             Some(entry) if is_valid(entry.raw_eval) => entry.raw_eval,
             _ => td.nnue.evaluate(&td.board),
         };
-        eval = correct_eval(td, raw_eval, eval_correction(td, ply));
+        eval = correct_eval(td, raw_eval, eval_correction(td, ply, false));
         best_score = eval;
 
         if is_valid(tt_score)
@@ -1299,9 +1287,10 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
     best_score
 }
 
-fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
+fn eval_correction(td: &ThreadData, ply: isize, cut_node: bool) -> i32 {
     let stm = td.board.side_to_move();
     let corrhist = td.corrhist();
+    let cutnode_correction_value = if cut_node { corrhist.cut_node.get(stm, td.board.pawn_key())} else {0};
 
     (corrhist.pawn.get(stm, td.board.pawn_key())
         + corrhist.minor.get(stm, td.board.minor_key())
@@ -1316,11 +1305,12 @@ fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
             td.stack[ply - 4].contcorrhist,
             td.stack[ply - 1].piece,
             td.stack[ply - 1].mv.to(),
-        ))
+        )
+        + cutnode_correction_value)
         / 77
 }
 
-fn update_correction_histories(td: &mut ThreadData, depth: i32, diff: i32, ply: isize) {
+fn update_correction_histories(td: &mut ThreadData, depth: i32, diff: i32, ply: isize, cut_node: bool) {
     let stm = td.board.side_to_move();
     let corrhist = td.corrhist();
     let bonus = (142 * depth * diff / 128).clamp(-4923, 3072);
@@ -1347,6 +1337,10 @@ fn update_correction_histories(td: &mut ThreadData, depth: i32, diff: i32, ply: 
             td.stack[ply - 1].mv.to(),
             bonus,
         );
+    }
+
+    if cut_node {
+        corrhist.cut_node.update(td.board.side_to_move(), td.board.pawn_key(), bonus);
     }
 }
 
