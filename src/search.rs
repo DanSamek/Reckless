@@ -519,7 +519,7 @@ fn search<NODE: NodeType>(
                 + 519 * correction_value.abs() / 1024
                 + 32 * (depth == 1) as i32
                 - 64 * ((td.board.all_threats() & td.board.us()).is_empty() && !td.board.in_check()) as i32
-                + 48 * (cutnode_correction_value < -11) as i32
+                + 16 * (cutnode_correction_value < -11) as i32
         && !is_loss(beta)
         && !is_win(estimated_score)
     {
