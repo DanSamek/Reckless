@@ -508,7 +508,6 @@ fn search<NODE: NodeType>(
         return qsearch::<NonPV>(td, alpha, beta, ply);
     }
 
-    let cutnode_correction_value = if cut_node { td.corrhist().cut_node.get(td.board.side_to_move(), td.board.pawn_key()) / 1024} else { 0 };
     // Reverse Futility Pruning (RFP)
     if !tt_pv
         && !excluded
@@ -519,7 +518,7 @@ fn search<NODE: NodeType>(
                 + 519 * correction_value.abs() / 1024
                 + 32 * (depth == 1) as i32
                 - 64 * ((td.board.all_threats() & td.board.us()).is_empty() && !td.board.in_check()) as i32
-                + 16 * (cutnode_correction_value < -11) as i32
+                - td.cutoff_history.get(td.board.side_to_move()) / 512
         && !is_loss(beta)
         && !is_win(estimated_score)
     {
@@ -1078,9 +1077,9 @@ fn search<NODE: NodeType>(
         best_score = best_score.min(max_score);
     }
 
-    if cut_node && !is_decisive(best_score) {
-        let bonus = ((192 * (best_score - beta) * depth) / 128).clamp(-4923, 3072);
-        td.corrhist().cut_node.update(td.board.side_to_move(), td.board.pawn_key(), bonus);
+    if !NODE::PV {
+        let bonus = if best_score >= beta { 700 } else { -700 };    
+        td.cutoff_history.update(td.board.side_to_move(), bonus);
     }
 
     if !(excluded || NODE::ROOT && td.pv_index > 0) {
