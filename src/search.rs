@@ -524,6 +524,7 @@ fn search<NODE: NodeType>(
         return beta + (estimated_score - beta) / 3;
     }
 
+    let nmp_history_value = td.null_move_history.get(td.board.pawn_key(), td.board.side_to_move()) as i32;
     // Null Move Pruning (NMP)
     if cut_node
         && !in_check
@@ -533,7 +534,7 @@ fn search<NODE: NodeType>(
         && estimated_score >= eval
         && eval
             >= beta - 9 * depth + 126 * tt_pv as i32 - 128 * improvement / 1024 + 286
-                - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32
+                - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32 - nmp_history_value / 256
         && ply as i32 >= td.nmp_min_ply
         && td.board.has_non_pawns()
         && !is_loss(beta)
@@ -561,6 +562,9 @@ fn search<NODE: NodeType>(
         if td.stopped {
             return Score::ZERO;
         }
+
+        let bonus = if score >= beta { 800 } else { -800 };
+        td.null_move_history.update(td.board.pawn_key(), td.board.side_to_move(), bonus);
 
         if score >= beta && !is_win(score) {
             if td.nmp_min_ply > 0 || depth < 16 {
