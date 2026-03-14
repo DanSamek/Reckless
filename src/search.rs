@@ -627,6 +627,7 @@ fn search<NODE: NodeType>(
             }
 
             if score >= probcut_beta {
+                td.stack[ply].cutoff_count += 1;
                 td.shared.tt.write(hash, probcut_depth + 1, raw_eval, score, Bound::Lower, mv, ply, tt_pv, false);
 
                 if !is_decisive(score) {
