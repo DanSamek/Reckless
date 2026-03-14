@@ -24,6 +24,7 @@ struct InternalState {
     pawn_key: u64,
     minor_key: u64,
     non_pawn_keys: [u64; Color::NUM],
+    segment_keys: [u64; 4],
     en_passant: Square,
     castling: Castling,
     halfmove_clock: u8,
@@ -90,6 +91,10 @@ impl Board {
 
     pub const fn non_pawn_key(&self, color: Color) -> u64 {
         self.state.non_pawn_keys[color as usize]
+    }
+
+    pub fn segment_key(&self, square: Square) -> u64 {
+        self.state.segment_keys[self.segment_index(square)]
     }
 
     pub const fn pinned(&self, color: Color) -> Bitboard {
@@ -230,6 +235,18 @@ impl Board {
         self.pieces[piece.piece_type()].clear(square);
     }
 
+    const SEGMENT_INDEXES: [usize; 64] = [0,0,0,0,1,1,1,1,
+                                        0,0,0,0,1,1,1,1,
+                                        0,0,0,0,1,1,1,1,
+                                        0,0,0,0,1,1,1,1,
+                                        2,2,2,2,3,3,3,3,
+                                        2,2,2,2,3,3,3,3,
+                                        2,2,2,2,3,3,3,3,
+                                        2,2,2,2,3,3,3,3];
+    pub fn segment_index(&self, square: Square) -> usize {
+        Self::SEGMENT_INDEXES[square]
+    }
+
     pub fn update_hash(&mut self, piece: Piece, square: Square) {
         let key = ZOBRIST.pieces[piece][square];
 
@@ -244,6 +261,8 @@ impl Board {
                 self.state.minor_key ^= key;
             }
         }
+        
+        self.state.segment_keys[self.segment_index(square)] ^= key;
     }
 
     /// Checks for a material draw
@@ -583,6 +602,11 @@ impl Board {
         self.state.pawn_key = 0;
         self.state.minor_key = 0;
         self.state.non_pawn_keys = [0; Color::NUM];
+
+        for segment in 0..4 {
+            self.state.segment_keys[segment] = 0;
+        }
+
 
         for piece in 0..Piece::NUM {
             let piece = Piece::from_index(piece);
