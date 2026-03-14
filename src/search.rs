@@ -878,7 +878,7 @@ fn search<NODE: NodeType>(
             }
 
             if td.stack[ply + 1].cutoff_count > 2 {
-                reduction += 1452;
+                reduction += 1452 + 512 * !cut_node as i32;
             }
 
             if mv == tt_move {
