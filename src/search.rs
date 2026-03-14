@@ -959,7 +959,7 @@ fn search<NODE: NodeType>(
 
                 if score >= beta {
                     bound = Bound::Lower;
-                    td.stack[ply].cutoff_value += if NODE::PV { 1024 } else { 768 + 256 * (extension > 0) as i32};
+                    td.stack[ply].cutoff_value += if NODE::PV { 1024 } else { 512 + 512 * !cut_node as i32};
                     break;
                 }
 
