@@ -19,6 +19,7 @@ use crate::{
 
 #[allow(unused_imports)]
 use crate::misc::{dbg_hit, dbg_stats};
+use crate::types::Bitboard;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum Report {
@@ -1288,6 +1289,16 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
     best_score
 }
 
+fn threats_key(threats: Bitboard) -> u64 {
+    let mut hash = threats.0;
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51afd7ed558ccd);
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xc4ceb9fe1a85ec53);
+    hash ^= hash >> 33;
+    hash
+}
+
 fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
     let stm = td.board.side_to_move();
     let corrhist = td.corrhist();
@@ -1296,6 +1307,7 @@ fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
         + corrhist.minor.get(stm, td.board.minor_key())
         + corrhist.non_pawn[Color::White].get(stm, td.board.non_pawn_key(Color::White))
         + corrhist.non_pawn[Color::Black].get(stm, td.board.non_pawn_key(Color::Black))
+        + corrhist.threats.get(stm, threats_key(td.board.all_threats()))
         + td.continuation_corrhist.get(
             td.stack[ply - 2].contcorrhist,
             td.stack[ply - 1].piece,
@@ -1319,6 +1331,8 @@ fn update_correction_histories(td: &mut ThreadData, depth: i32, diff: i32, ply: 
 
     corrhist.non_pawn[Color::White].update(stm, td.board.non_pawn_key(Color::White), bonus);
     corrhist.non_pawn[Color::Black].update(stm, td.board.non_pawn_key(Color::Black), bonus);
+
+    corrhist.threats.update(stm, threats_key(td.board.all_threats()), bonus);
 
     if td.stack[ply - 1].mv.is_some() && td.stack[ply - 2].mv.is_some() {
         td.continuation_corrhist.update(
