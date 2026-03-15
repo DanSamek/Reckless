@@ -454,7 +454,7 @@ fn search<NODE: NodeType>(
     td.stack[ply].tt_pv = tt_pv;
     td.stack[ply].reduction = 0;
     td.stack[ply].move_count = 0;
-    td.stack[ply + 2].cutoff_count = 0;
+    td.stack[ply + 2].cutoff_value = 0;
 
     // Quiet move ordering using eval difference
     if !NODE::ROOT && !in_check && !excluded && td.stack[ply - 1].mv.is_quiet() && is_valid(td.stack[ply - 1].eval) {
@@ -533,7 +533,7 @@ fn search<NODE: NodeType>(
         && estimated_score >= eval
         && eval
             >= beta - 9 * depth + 126 * tt_pv as i32 - 128 * improvement / 1024 + 286
-                - 20 * (td.stack[ply + 1].cutoff_count < 2) as i32
+                - 20 * (td.stack[ply + 1].cutoff_value < 2048) as i32
         && ply as i32 >= td.nmp_min_ply
         && td.board.has_non_pawns()
         && !is_loss(beta)
@@ -638,6 +638,7 @@ fn search<NODE: NodeType>(
 
     // Singular Extensions (SE)
     let mut extension = 0;
+    let mut se_extension = false;
 
     if !NODE::ROOT && !excluded && potential_singularity && ply < 2 * td.root_depth as isize {
         debug_assert!(is_valid(tt_score));
@@ -662,6 +663,7 @@ fn search<NODE: NodeType>(
             extension = 1;
             extension += (score < singular_beta - double_margin) as i32;
             extension += (score < singular_beta - triple_margin) as i32;
+            se_extension = true;
         }
         // Multi-Cut
         else if score >= beta && !is_decisive(score) {
@@ -817,7 +819,7 @@ fn search<NODE: NodeType>(
                 reduction -= 966;
             }
 
-            if td.stack[ply + 1].cutoff_count > 2 {
+            if td.stack[ply + 1].cutoff_value > 2048 {
                 reduction += 1604;
             }
 
@@ -876,7 +878,7 @@ fn search<NODE: NodeType>(
                 reduction += (454 - 254 * improvement / 128).min(1368);
             }
 
-            if td.stack[ply + 1].cutoff_count > 2 {
+            if td.stack[ply + 1].cutoff_value > 2048 {
                 reduction += 1452;
             }
 
@@ -958,7 +960,7 @@ fn search<NODE: NodeType>(
 
                 if score >= beta {
                     bound = Bound::Lower;
-                    td.stack[ply].cutoff_count += 1;
+                    td.stack[ply].cutoff_value += if NODE::PV { 1024 } else { 512 + 512 * se_extension as i32};
                     break;
                 }
 
