@@ -630,7 +630,8 @@ fn search<NODE: NodeType>(
                 td.shared.tt.write(hash, probcut_depth + 1, raw_eval, score, Bound::Lower, mv, ply, tt_pv, false);
 
                 if !is_decisive(score) {
-                    return (3 * score + beta) / 4;
+                    let adjusted_depth = probcut_depth.max(3);
+                    return (adjusted_depth * score + beta) / (adjusted_depth + 1);
                 }
             }
         }
