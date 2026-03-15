@@ -1291,22 +1291,24 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
 fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
     let stm = td.board.side_to_move();
     let corrhist = td.corrhist();
+    let pawn_value = corrhist.pawn.get(stm, td.board.pawn_key());
+    let minor_value = corrhist.minor.get(stm, td.board.minor_key());
+    let non_pawn_value = corrhist.non_pawn[Color::White].get(stm, td.board.non_pawn_key(Color::White))
+        + corrhist.non_pawn[Color::Black].get(stm, td.board.non_pawn_key(Color::Black));
 
-    (corrhist.pawn.get(stm, td.board.pawn_key())
-        + corrhist.minor.get(stm, td.board.minor_key())
-        + corrhist.non_pawn[Color::White].get(stm, td.board.non_pawn_key(Color::White))
-        + corrhist.non_pawn[Color::Black].get(stm, td.board.non_pawn_key(Color::Black))
-        + td.continuation_corrhist.get(
-            td.stack[ply - 2].contcorrhist,
-            td.stack[ply - 1].piece,
-            td.stack[ply - 1].mv.to(),
+    let cont_value = td.continuation_corrhist.get(
+        td.stack[ply - 2].contcorrhist,
+        td.stack[ply - 1].piece,
+        td.stack[ply - 1].mv.to(),
         )
         + td.continuation_corrhist.get(
-            td.stack[ply - 4].contcorrhist,
-            td.stack[ply - 1].piece,
-            td.stack[ply - 1].mv.to(),
-        ))
-        / 77
+        td.stack[ply - 4].contcorrhist,
+        td.stack[ply - 1].piece,
+        td.stack[ply - 1].mv.to(),
+    );
+
+    let correction = (918 * pawn_value + 708 * minor_value + 1024 * non_pawn_value + 644 * cont_value) / 78848;
+    correction
 }
 
 fn update_correction_histories(td: &mut ThreadData, depth: i32, diff: i32, ply: isize) {
