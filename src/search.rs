@@ -1307,7 +1307,7 @@ fn eval_correction(td: &ThreadData, ply: isize) -> i32 {
         td.stack[ply - 1].mv.to(),
     );
 
-    let correction = (918 * pawn_value + 708 * minor_value + 1024 * non_pawn_value + 644 * cont_value) / 78848;
+    let correction = (910 * pawn_value + 720 * minor_value + 1010 * non_pawn_value + 640 * cont_value) / 65536;
     correction
 }
 
