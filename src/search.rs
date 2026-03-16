@@ -459,6 +459,16 @@ fn search<NODE: NodeType>(
         td.quiet_history.update(td.board.prior_threats(), !td.board.side_to_move(), td.stack[ply - 1].mv, bonus);
     }
 
+    // Razoring
+    if !NODE::PV
+        && !in_check
+        && estimated_score < alpha - 299 - 252 * depth * depth
+        && alpha < 2048
+        && !tt_move.is_quiet()
+    {
+        return qsearch::<NonPV>(td, alpha, beta, ply);
+    }
+
     // Hindsight reductions
     if !NODE::ROOT && !in_check && !excluded && td.stack[ply - 1].reduction >= 2247 && eval + td.stack[ply - 1].eval < 0
     {
@@ -492,16 +502,6 @@ fn search<NODE: NodeType>(
     }
 
     let improving = improvement > 0;
-
-    // Razoring
-    if !NODE::PV
-        && !in_check
-        && estimated_score < alpha - 299 - 252 * depth * depth
-        && alpha < 2048
-        && !tt_move.is_quiet()
-    {
-        return qsearch::<NonPV>(td, alpha, beta, ply);
-    }
 
     // Reverse Futility Pruning (RFP)
     if !tt_pv
