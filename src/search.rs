@@ -708,6 +708,8 @@ fn search<NODE: NodeType>(
             td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
         };
 
+        td.stack[ply].move_hist = history;
+
         if !NODE::ROOT && !is_loss(best_score) {
             // Late Move Pruning (LMP)
             skip_quiets |= !in_check
@@ -1034,7 +1036,8 @@ fn search<NODE: NodeType>(
                 + 215 * (td.stack[ply - 1].move_count > 8) as i32
                 + 113 * (prior_move == td.stack[ply - 1].tt_move) as i32
                 + 130 * (!in_check && best_score <= eval - 96) as i32
-                + 317 * (is_valid(td.stack[ply - 1].eval) && best_score <= -td.stack[ply - 1].eval - 120) as i32;
+                + 317 * (is_valid(td.stack[ply - 1].eval) && best_score <= -td.stack[ply - 1].eval - 120) as i32
+                - td.stack[ply - 1].move_hist / 256;
 
             let scaled_bonus = factor * (153 * depth - 34).min(2474) / 128;
 
