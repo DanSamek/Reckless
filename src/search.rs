@@ -1063,7 +1063,9 @@ fn search<NODE: NodeType>(
 
     if !NODE::ROOT && best_score >= beta && !is_decisive(best_score) && !is_decisive(alpha) {
         let weight = depth.min(8);
-        best_score = (best_score * weight + beta) / (weight + 1);
+        let quadratic_weight = weight * weight;
+        let middle_weight = (quadratic_weight + weight) / 2;
+        best_score = (best_score * middle_weight + beta) / (middle_weight + 1);
     }
 
     #[cfg(feature = "syzygy")]
