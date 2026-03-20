@@ -646,7 +646,7 @@ fn search<NODE: NodeType>(
         && tt_score >= probcut_beta
         && tt_depth >= depth - 2
     {
-        return tt_score;
+        return (tt_score + beta) / 2;
     }
 
 
