@@ -634,6 +634,22 @@ fn search<NODE: NodeType>(
         }
     }
 
+    probcut_beta = beta + 375;
+    if !NODE::PV
+        && !potential_singularity
+        && !excluded
+        && !in_check
+        && is_valid(tt_score)
+        && !is_decisive(tt_score)
+        && !is_decisive(beta)
+        && !is_decisive(probcut_beta)
+        && matches!(tt_bound, Bound::Lower | Bound::Exact)
+        && tt_score >= probcut_beta
+        && tt_depth >= depth - 2
+    {
+        return tt_score;
+    }
+
     // Singular Extensions (SE)
     let mut extension = 0;
 
